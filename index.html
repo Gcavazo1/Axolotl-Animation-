@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axolotl Animation with GLSL Shaders</title>
+    <style>
+        :root {
+            --panel-bg-color: rgba(30, 30, 40, 0.95);
+            --panel-border: 1px solid rgba(100, 100, 255, 0.3);
+            --panel-shadow: 0 0 15px rgba(80, 80, 255, 0.2);
+            --text-color: #c5d1eb;
+            --accent-color: #64b5f6;
+            --header-color: #9fa8da;
+            --slider-bg: rgba(40, 50, 80, 0.7);
+            --slider-active: #536dfe;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: var(--text-color);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: row;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .main-container {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Control Panel Styles */
+        #control-panel {
+            width: 280px;
+            background-color: var(--panel-bg-color);
+            border: var(--panel-border);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: var(--panel-shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 564px;
+            overflow-y: auto;
+        }
+        
+        #control-panel h2 {
+            color: var(--header-color);
+            font-size: 1.3rem;
+            margin: 0 0 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 5px;
+        }
+        
+        .panel-section {
+            margin-bottom: 10px;
+        }
+        
+        /* Debug Info Styles */
+        #debug-info-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .debug-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dotted rgba(255, 255, 255, 0.1);
+            padding: 3px 0;
+        }
+        
+        .debug-value {
+            color: var(--accent-color);
+            font-family: monospace;
+        }
+        
+        /* Button Styles */
+        #start-button, .control-button {
+            padding: 12px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: linear-gradient(to bottom, #4a5bdc, #3240aa);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+            margin-top: 10px;
+        }
+        
+        #start-button:hover, .control-button:hover {
+            background: linear-gradient(to bottom, #5a6bec, #4250ba);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        #start-button:disabled, .control-button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        
+        .control-button.secondary {
+            background: linear-gradient(to bottom, #334, #223);
+            font-size: 14px;
+            padding: 8px 15px;
+        }
+        
+        .control-button.secondary:hover {
+            background: linear-gradient(to bottom, #445, #334);
+        }
+        
+        .button-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        /* Toggle Button */
+        .toggle-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .toggle-switch input { 
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--slider-bg);
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: var(--slider-active);
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        
+        /* Control Sliders */
+        .control-slider {
+            margin: 15px 0;
+        }
+        
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        .slider-value {
+            color: var(--accent-color);
+            font-family: monospace;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: var(--slider-bg);
+            outline: none;
+            border-radius: 3px;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--slider-active);
+            cursor: pointer;
+            transition: background .2s;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb:hover {
+            background: var(--accent-color);
+        }
+        
+        /* Canvas Container Styles */
+        #canvas-container {
+            position: relative;
+            width: 800px;
+            height: 564px;
+            box-shadow: 0 0 30px rgba(0, 0, 150, 0.3);
+            background-color: #000;
+            overflow: hidden;
+            border-radius: 8px;
+            border: var(--panel-border);
+        }
+        
+        /* Start Screen Background */
+        #start-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('src/assets/screenshots/axolotl-main.jpg');
+            background-size: cover;
+            background-position: center;
+            z-index: 2;
+            transition: opacity 0.5s ease;
+        }
+        
+        /* Hide start screen after animation begins */
+        #start-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: block;
+        }
+        
+        #sprite-canvas {
+            z-index: 3; /* Sprite on top */
+            background-color: transparent !important;
+        }
+        
+        /* Animation Info */
+        .animation-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 0, 0, 0.6);
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            color: white;
+            z-index: 10;
+        }
+        
+        /* Collapse/Expand animations */
+        .collapsed {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <!-- Control Panel -->
+        <div id="control-panel">
+            <div class="panel-section">
+                <h2>Axolotl Animation Control</h2>
+                <!-- Start button will be inserted here by JavaScript -->
+                <div class="toggle-button">
+                    <span>Show Debug Info</span>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggle-debug" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2>Shader Controls</h2>
+                
+                <div class="control-slider">
+                    <div class="slider-label">
+                        <span>Sun Ray Intensity</span>
+                        <span class="slider-value" id="sun-ray-value">0.8</span>
+                    </div>
+                    <input type="range" id="sun-ray-slider" min="0" max="1.5" step="0.1" value="0.8">
+                </div>
+                
+                <div class="control-slider">
+                    <div class="slider-label">
+                        <span>Wave Frequency</span>
+                        <span class="slider-value" id="wave-freq-value">1.0</span>
+                    </div>
+                    <input type="range" id="wave-freq-slider" min="0.1" max="2" step="0.1" value="1.0">
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <h2>Sprite Controls</h2>
+                
+                <div class="control-slider">
+                    <div class="slider-label">
+                        <span>Sprint Speed</span>
+                        <span class="slider-value" id="sprint-speed-value">1.0</span>
+                    </div>
+                    <input type="range" id="sprint-speed-slider" min="0.5" max="2" step="0.1" value="1.0">
+                </div>
+                
+                <div class="control-slider">
+                    <div class="slider-label">
+                        <span>Sprite Size</span>
+                        <span class="slider-value" id="sprite-size-value">2.0</span>
+                    </div>
+                    <input type="range" id="sprite-size-slider" min="1" max="3" step="0.1" value="2.0">
+                </div>
+                
+                <div class="button-row">
+                    <button id="reset-controls" class="control-button secondary">Reset to Defaults</button>
+                </div>
+            </div>
+            
+            <div class="panel-section" id="debug-section">
+                <h2>Animation Stats</h2>
+                <div id="debug-info-panel">
+                    <div class="debug-item">
+                        <span>Animation:</span>
+                        <span id="current-animation" class="debug-value">Not started</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Sequence:</span>
+                        <span id="current-sequence" class="debug-value">0/6</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Frame:</span>
+                        <span id="current-frame" class="debug-value">0/12</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Time:</span>
+                        <span id="animation-time" class="debug-value">0.0s / 20.0s</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Position:</span>
+                        <span id="sprite-position" class="debug-value">X=50, Y=250</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Row Pair:</span>
+                        <span id="row-info" class="debug-value">-</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Double Framing:</span>
+                        <span id="frame-info" class="debug-value">-</span>
+                    </div>
+                    <div class="debug-item">
+                        <span>Movement:</span>
+                        <span id="movement-info" class="debug-value">-</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section" id="water-debug-section">
+                <h2>Water Transition</h2>
+                <div id="water-debug" class="debug-item">
+                    <span>Status:</span>
+                    <span id="water-status" class="debug-value">Underwater</span>
+                </div>
+                <div class="debug-item">
+                    <span>Transition:</span>
+                    <span id="transition-info" class="debug-value">0%</span>
+                </div>
+            </div>
+            
+            <div class="panel-section" id="layer-debug-section">
+                <h2>Layer Information</h2>
+                <div class="debug-item">
+                    <span>Land Layer:</span>
+                    <span class="debug-value">z-index: 1</span>
+                </div>
+                <div class="debug-item">
+                    <span>Water Layer:</span>
+                    <span class="debug-value">z-index: 2</span>
+                </div>
+                <div class="debug-item">
+                    <span>Sprite Layer:</span>
+                    <span class="debug-value">z-index: 3</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Animation Container -->
+        <div id="canvas-container">
+            <!-- Start screen image -->
+            <div id="start-screen"></div>
+            
+            <!-- The shader canvases will be added dynamically by JavaScript -->
+            <canvas id="sprite-canvas" width="800" height="564"></canvas>
+            
+            <!-- Small info panel that stays on the canvas -->
+            <div class="animation-info" id="minimal-info">Ready</div>
+        </div>
+    </div>
+    
+    <!-- Import our JavaScript modules -->
+    <script type="module">
+        import { SpriteAnimation } from './src/js/sprite-app.js';
+        import { ShaderManager } from './src/js/ShaderManager.js';
+        
+        // Initialize the sprite animation
+        window.addEventListener('load', () => {
+            // Create shader manager first (bottom layers)
+            const shaderManager = new ShaderManager();
+            
+            // Create sprite animation (top layer)
+            const spriteAnimation = new SpriteAnimation();
+            
+            // Initially hide the sprite canvas until Start is clicked
+            document.getElementById('sprite-canvas').style.visibility = 'hidden';
+            
+            // Get start screen element
+            const startScreen = document.getElementById('start-screen');
+            
+            // Hook into shader manager's startSequence function to hide the start screen
+            const originalStartSequence = shaderManager.startSequence;
+            shaderManager.startSequence = function() {
+                // Call original startSequence
+                originalStartSequence.call(this);
+                
+                // Hide start screen and show sprite
+                startScreen.classList.add('hidden');
+                document.getElementById('sprite-canvas').style.visibility = 'visible';
+            };
+            
+            // Add debug info updater
+            const minimalInfo = document.getElementById('minimal-info');
+            
+            // Get all debug elements
+            const debugElements = {
+                currentAnimation: document.getElementById('current-animation'),
+                currentSequence: document.getElementById('current-sequence'),
+                currentFrame: document.getElementById('current-frame'),
+                animationTime: document.getElementById('animation-time'),
+                spritePosition: document.getElementById('sprite-position'),
+                rowInfo: document.getElementById('row-info'),
+                frameInfo: document.getElementById('frame-info'),
+                movementInfo: document.getElementById('movement-info'),
+                waterStatus: document.getElementById('water-status'),
+                transitionInfo: document.getElementById('transition-info')
+            };
+            
+            // Set up debug toggle
+            const debugToggle = document.getElementById('toggle-debug');
+            const debugSections = [
+                document.getElementById('debug-section'),
+                document.getElementById('water-debug-section'),
+                document.getElementById('layer-debug-section')
+            ];
+            
+            debugToggle.addEventListener('change', () => {
+                debugSections.forEach(section => {
+                    if (debugToggle.checked) {
+                        section.classList.remove('collapsed');
+                    } else {
+                        section.classList.add('collapsed');
+                    }
+                });
+            });
+            
+            // Set up shader controls
+            const sunRaySlider = document.getElementById('sun-ray-slider');
+            const sunRayValue = document.getElementById('sun-ray-value');
+            
+            sunRaySlider.addEventListener('input', function() {
+                const value = this.value;
+                sunRayValue.textContent = value;
+                shaderManager.setSunRayIntensity(value);
+            });
+            
+            const waveFreqSlider = document.getElementById('wave-freq-slider');
+            const waveFreqValue = document.getElementById('wave-freq-value');
+            
+            waveFreqSlider.addEventListener('input', function() {
+                const value = this.value;
+                waveFreqValue.textContent = value;
+                shaderManager.setWaveFrequency(value);
+            });
+            
+            // Set up sprite controls
+            const sprintSpeedSlider = document.getElementById('sprint-speed-slider');
+            const sprintSpeedValue = document.getElementById('sprint-speed-value');
+            
+            sprintSpeedSlider.addEventListener('input', function() {
+                const value = this.value;
+                sprintSpeedValue.textContent = value;
+                spriteAnimation.setSprintSpeedMultiplier(value);
+            });
+            
+            const spriteSizeSlider = document.getElementById('sprite-size-slider');
+            const spriteSizeValue = document.getElementById('sprite-size-value');
+            
+            spriteSizeSlider.addEventListener('input', function() {
+                const value = this.value;
+                spriteSizeValue.textContent = value;
+                spriteAnimation.setSpriteScale(value);
+            });
+            
+            // Set up reset button
+            const resetButton = document.getElementById('reset-controls');
+            
+            resetButton.addEventListener('click', () => {
+                // Reset slider values
+                sunRaySlider.value = 0.8;
+                sunRayValue.textContent = '0.8';
+                
+                waveFreqSlider.value = 1.0;
+                waveFreqValue.textContent = '1.0';
+                
+                sprintSpeedSlider.value = 1.0;
+                sprintSpeedValue.textContent = '1.0';
+                
+                spriteSizeSlider.value = 2.0;
+                spriteSizeValue.textContent = '2.0';
+                
+                // Reset shader values
+                shaderManager.resetShaderParams();
+                
+                // Reset sprite values
+                spriteAnimation.resetConfig();
+            });
+            
+            // Update debug info periodically
+            setInterval(() => {
+                if (shaderManager.isPlaying && spriteAnimation.isActive) {
+                    // Update minimal info on canvas
+                    minimalInfo.textContent = `Time: ${shaderManager.currentTime.toFixed(1)}s / ${shaderManager.totalDuration}s`;
+                    
+                    // Update detailed info in control panel
+                    debugElements.currentAnimation.textContent = spriteAnimation.currentAnimation;
+                    debugElements.currentSequence.textContent = `${spriteAnimation.currentSequence + 1}/${spriteAnimation.sequences.length}`;
+                    debugElements.currentFrame.textContent = `${spriteAnimation.currentFrame + 1}/12`;
+                    debugElements.animationTime.textContent = `${spriteAnimation.sequenceTimer.toFixed(1)}s / ${spriteAnimation.totalSequenceDuration}s`;
+                    debugElements.spritePosition.textContent = `X=${spriteAnimation.spriteX.toFixed(0)}, Y=${spriteAnimation.spriteY.toFixed(0)}`;
+                    
+                    // Row information based on current animation
+                    let rowPairInfo = "";
+                    switch(spriteAnimation.currentAnimation) {
+                        case 'getUp': rowPairInfo = "Rows 3-4"; break;
+                        case 'run': rowPairInfo = "Rows 5-6"; break;
+                        case 'sprint': rowPairInfo = "Rows 1-2"; break;
+                        case 'transition': rowPairInfo = "Rows 7-8"; break;
+                        case 'sprintLand': rowPairInfo = "Rows 9-10"; break;
+                    }
+                    
+                    // Determine which row is being used
+                    const useSecondRow = spriteAnimation.currentFrame >= 10;
+                    const baseRowIndex = spriteAnimation.animations[spriteAnimation.currentAnimation].rowIndex;
+                    const row = useSecondRow ? baseRowIndex + 1 : baseRowIndex;
+                    
+                    debugElements.rowInfo.textContent = `${rowPairInfo} (Row ${row + 1}, ${useSecondRow ? 'bottom' : 'top'})`;
+                    debugElements.frameInfo.textContent = `Frame ${spriteAnimation.currentFrame + 1} (${spriteAnimation.frameDisplayCount + 1}/${spriteAnimation.framesPerDisplayFrame})`;
+                    
+                    // Movement info
+                    const progress = Math.round((spriteAnimation.spriteX - spriteAnimation.startX) / spriteAnimation.totalDistance * 100);
+                    const direction = spriteAnimation.direction > 0 ? 'Right' : 'Left';
+                    debugElements.movementInfo.textContent = `${progress}% | Speed: ${spriteAnimation.movementSpeeds[spriteAnimation.currentAnimation].toFixed(1)} | ${direction}`;
+                    
+                    // Water status
+                    if (shaderManager.currentTime < shaderManager.transitionStart) {
+                        debugElements.waterStatus.textContent = "Underwater";
+                    } else if (shaderManager.currentTime > shaderManager.transitionStart + shaderManager.transitionDuration) {
+                        debugElements.waterStatus.textContent = "On Land";
+                    } else {
+                        debugElements.waterStatus.textContent = "Transitioning";
+                    }
+                    
+                    // Transition info
+                    if (shaderManager.currentTime >= shaderManager.transitionStart && 
+                        shaderManager.currentTime <= shaderManager.transitionStart + shaderManager.transitionDuration) {
+                        const progress = ((shaderManager.currentTime - shaderManager.transitionStart) / 
+                                        shaderManager.transitionDuration * 100).toFixed(0);
+                        debugElements.transitionInfo.textContent = `${progress}%`;
+                    } else {
+                        debugElements.transitionInfo.textContent = shaderManager.currentTime < shaderManager.transitionStart ? "Not started" : "Complete";
+                    }
+                }
+            }, 100);
+            
+            // Expose both to window for debugging
+            window.shaderManager = shaderManager;
+            window.spriteAnimation = spriteAnimation;
+            
+            // Log canvas info
+            console.log("Canvas hierarchy initialized", {
+                container: document.getElementById('canvas-container'),
+                landCanvas: document.getElementById('land-shader-canvas'),
+                underwaterCanvas: document.getElementById('underwater-shader-canvas'),
+                spriteCanvas: document.getElementById('sprite-canvas')
+            });
+        });
+    </script>
+</body>
+</html> 

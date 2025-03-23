@@ -1,0 +1,67 @@
+{
+  "rules": {
+    "shader": {
+      "maxFileSize": "50KB",
+      "requiredComments": [
+        "precision declaration",
+        "uniform declarations",
+        "main function"
+      ],
+      "naming": {
+        "uniforms": "^u_[a-zA-Z]+$",
+        "functions": "^[a-z][a-zA-Z]*$",
+        "variables": "^[a-z][a-zA-Z]*$"
+      }
+    },
+    "javascript": {
+      "maxFileSize": "100KB",
+      "maxFunctionLength": 50,
+      "maxLineLength": 100,
+      "naming": {
+        "classes": "^[A-Z][a-zA-Z]*$",
+        "functions": "^[a-z][a-zA-Z]*$",
+        "variables": "^[a-z][a-zA-Z]*$",
+        "constants": "^[A-Z][A-Z0-9_]*$"
+      }
+    },
+    "assets": {
+      "sprites": {
+        "location": "src/assets/sprites",
+        "maxSize": "2MB",
+        "formats": ["png", "webp"]
+      },
+      "textures": {
+        "location": "src/assets/textures",
+        "maxSize": "1MB",
+        "formats": ["png", "webp"]
+      }
+    },
+    "fileStructure": {
+      "src": {
+        "required": ["js", "css", "assets"],
+        "assets": {
+          "required": ["sprites"]
+        }
+      }
+    },
+    "restrictions": {
+      "noFallbackStyles": true,
+      "noAlternativeStyles": true,
+      "noUnrequestedFeatures": true,
+      "strictlyFollowRequests": true,
+      "neverUseHardcodedFallbacks": true
+    }
+  },
+  "important_notes": [
+    "NEVER USE FALLBACK STYLES WITHOUT EXPLICIT USER PERMISSION",
+    "DO NOT USE ALTERNATIVE APPROACHES WITHOUT USER APPROVAL",
+    "FOLLOW INSTRUCTIONS EXACTLY AS GIVEN"
+  ],
+  "ignore": [
+    "node_modules",
+    "dist",
+    ".git",
+    "*.min.js",
+    "*.min.css"
+  ]
+}
